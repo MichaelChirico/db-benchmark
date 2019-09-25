@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+
+
+<title>Database-like ops benchmark</title>
+
+<script src="index_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="index_files/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="index_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="index_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="index_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="index_files/navigation-1.1/tabsets.js"></script>
+<link href="index_files/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="index_files/highlightjs-9.12.0/highlight.js"></script>
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-129166154-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-129166154-1');
+</script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+</style>
+
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Database-like ops benchmark</h1>
+
+</div>
+
+
+<p>This page aims to benchmark various database-like tools popular in open-source data science. It runs regularly against very latest versions of these packages and automatically updates. We provide this as a service to both developers of these packages and to users. We hope to add joins and updates with a focus on ordered operations which are hard to achieve in (unordered) SQL. We hope to add more solutions over time although the most interesting solutions seems to be not mature enough. See <a href="https://github.com/h2oai/db-benchmark/blob/master/README.md">README.md</a> for detailed status.</p>
+<p>We limit the scope to what can be achieved on a single machine. Laptop size memory (8GB) and server size memory (250GB) are in scope. Out-of-memory using local disk such as NVMe is in scope. Multi-node systems such as Spark running in single machine mode is in scope, too. Machines are getting bigger: EC2 X1 has 2TB RAM and 1TB NVMe disk is under $300. If you can perform the task on a single machine, then perhaps you should. To our knowledge, nobody has yet compared this software in this way and published results too.</p>
+<p>We also include the syntax being timed alongside the timing. This way you can immediately see whether you are doing these tasks or not, and if the timing differences matter to you or not. A 10x difference may be irrelevant if that’s just 1s vs 0.1s on your data size. The intention is that you click the tab for the size of data you have.</p>
+<p>Because we have been asked many times to do so, the first task and initial motivation for this page, was to update the benchmark designed and run by <a href="https://twitter.com/MattDowle">Matt Dowle</a> (creator of <a href="https://github.com/Rdatatable/data.table">data.table</a>) in 2014 <a href="https://github.com/Rdatatable/data.table/wiki/Benchmarks-%3A-Grouping">here</a>. The methodology and reproducible code can be obtained there. Exact code of this report and benchmark script can be found at <a href="https://github.com/h2oai/db-benchmark">h2oai/db-benchmark</a> created by <a href="https://github.com/jangorecki">Jan Gorecki</a> funded by <a href="https://www.h2o.ai">H2O.ai</a>. In case of questions/feedback, feel free to file an issue there.</p>
+<div id="groupby" class="section level2 tabset tabset-fade tabset-pills">
+<h2>Groupby</h2>
+<p>Plot below presents just single input data and <em>basic</em> set of questions. Complete results of <em>groupby</em> task benchmark can be found in <a href="./groupby.html">h2oai.github.io/db-benchmark/groupby.html</a> report.</p>
+<div id="gb" class="section level3">
+<h3>0.5 GB</h3>
+<div class="figure">
+<img src="index/plots/groupby.1e7_1e2_0_0.png" />
+
+</div>
+</div>
+<div id="gb-1" class="section level3">
+<h3>5 GB</h3>
+<div class="figure">
+<img src="index/plots/groupby.1e8_1e2_0_0.png" />
+
+</div>
+</div>
+<div id="gb-2" class="section level3 active">
+<h3>50 GB</h3>
+<div class="figure">
+<img src="index/plots/groupby.1e9_1e2_0_0.png" />
+
+</div>
+</div>
+</div>
+<div id="notes" class="section level2">
+<h2>Notes</h2>
+<ul>
+<li>You are welcome to run this benchmark yourself! all scripts related to setting up environment, data and benchmark are in <a href="https://github.com/h2oai/db-benchmark">repository</a>.<br />
+</li>
+<li>Data used to generate plots on this website can be obtained from <a href="./time.csv">time.csv</a> (together with <a href="./logs.csv">logs.csv</a>). See <a href="https://github.com/h2oai/db-benchmark/blob/master/report.R">report.R</a> for quick introduction how to work with those.<br />
+</li>
+<li>We ensure that calculations are not deferred by solution.<br />
+</li>
+<li>We also tested that answers produced from different solutions match each others, for details see <a href="https://github.com/h2oai/db-benchmark/blob/master/answers-validation.R">answers-validation.R</a>.</li>
+</ul>
+</div>
+<div id="environment-configuration" class="section level2">
+<h2>Environment configuration</h2>
+<ul>
+<li>R 3.6.0</li>
+<li>python 3.6</li>
+<li>Julia 1.0.2</li>
+</ul>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Component</th>
+<th align="left">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">cpu_model</td>
+<td align="left">Intel(R) Xeon(R) CPU E5-2630 v4 @ 2.20GHz</td>
+</tr>
+<tr class="even">
+<td align="left">cpu_cores</td>
+<td align="left">40</td>
+</tr>
+<tr class="odd">
+<td align="left">memory_model</td>
+<td align="left">DIMM Synchronous 2133 MHz</td>
+</tr>
+<tr class="even">
+<td align="left">memory_gb</td>
+<td align="left">125.78</td>
+</tr>
+<tr class="odd">
+<td align="left">gpu_model</td>
+<td align="left">GeForce GTX 1080 Ti</td>
+</tr>
+<tr class="even">
+<td align="left">gpu_num</td>
+<td align="left">2</td>
+</tr>
+<tr class="odd">
+<td align="left">gpu_gb</td>
+<td align="left">21.83</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p>Benchmark run took around 64.7 hours.</p>
+<p>Report was generated on: 2019-09-24 18:16:43 PDT.</p>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

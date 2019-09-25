@@ -1,0 +1,2387 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+
+
+<title>Aggregation benchmark</title>
+
+<script src="groupby_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="groupby_files/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="groupby_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="groupby_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="groupby_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="groupby_files/navigation-1.1/tabsets.js"></script>
+<link href="groupby_files/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="groupby_files/highlightjs-9.12.0/highlight.js"></script>
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-129166154-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-129166154-1');
+</script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+</style>
+
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Aggregation benchmark</h1>
+
+</div>
+
+
+<p>This page presents results of <a href="./index.html">h2oai.github.io/db-benchmark</a> <em>groupby</em> task benchmark for various datasizes and various data characteristis (cardinality, percentage of missing values, pre-sorted input). There are 10 different questions run for each input data, questions are categorized into two groups. <em>Basic</em> questions refers to set of 5 questions designed by <a href="https://twitter.com/MattDowle">Matt Dowle</a> (creator of <a href="https://github.com/Rdatatable/data.table">data.table</a>) in 2014 <a href="https://github.com/Rdatatable/data.table/wiki/Benchmarks-%3A-Grouping">here</a>. <em>Advanced</em> questions are 5 new questions meant to cover more complex queries, which are also less obvious to optimize.</p>
+<div id="groupby" class="section level2 tabset tabset-fade tabset-pills">
+<h2>Groupby</h2>
+<p>Below timings are presented for a single dataset case having random order, no NAs (missing values) and particular cardinality factor (group size question 1 <code>k=100</code>). To see timings for other cases scroll down to full timings table. If a solution is missing on particular data size timings table refer to benchplot for a reason and check its speed on smaller data size tab.</p>
+<div id="gb" class="section level3">
+<h3>0.5 GB</h3>
+<div id="set-of-basic-questions" class="section level4">
+<h4>Set of basic questions</h4>
+<div class="figure">
+<img src="groupby/plots/G1_1e7_1e2_0_0.basic.png" />
+
+</div>
+</div>
+<div id="set-of-advanced-questions" class="section level4">
+<h4>Set of advanced questions</h4>
+<div class="figure">
+<img src="groupby/plots/G1_1e7_1e2_0_0.advanced.png" />
+
+</div>
+</div>
+<div id="details-table" class="section level4">
+<h4>Details table</h4>
+<p>Plots of all cases can be found at <a href="groupby/plots/G1_1e7_1e2_0_0.basic.png">G1_1e7_1e2_0_0.basic.png</a>, <a href="groupby/plots/G1_1e7_1e1_0_0.basic.png">G1_1e7_1e1_0_0.basic.png</a>, <a href="groupby/plots/G1_1e7_2e0_0_0.basic.png">G1_1e7_2e0_0_0.basic.png</a>, <a href="groupby/plots/G1_1e7_1e2_0_1.basic.png">G1_1e7_1e2_0_1.basic.png</a>, <a href="groupby/plots/G1_1e7_1e2_0_0.advanced.png">G1_1e7_1e2_0_0.advanced.png</a>, <a href="groupby/plots/G1_1e7_1e1_0_0.advanced.png">G1_1e7_1e1_0_0.advanced.png</a>, <a href="groupby/plots/G1_1e7_2e0_0_0.advanced.png">G1_1e7_2e0_0_0.advanced.png</a>, <a href="groupby/plots/G1_1e7_1e2_0_1.advanced.png">G1_1e7_1e2_0_1.advanced.png</a>. Below first run timings.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">rows</th>
+<th align="right">q1_grp.size</th>
+<th align="left">NA_pct</th>
+<th align="left">pre_sorted</th>
+<th align="left">question</th>
+<th align="right">data.table</th>
+<th align="right">dplyr</th>
+<th align="right">pandas</th>
+<th align="right">pydatatable</th>
+<th align="right">spark</th>
+<th align="right">dask</th>
+<th align="right">juliadf</th>
+<th align="right">clickhouse</th>
+<th align="right">cudf</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1</td>
+<td align="right">0.102</td>
+<td align="right">0.277</td>
+<td align="right">0.186</td>
+<td align="right">0.182</td>
+<td align="right">2.191</td>
+<td align="right">0.121</td>
+<td align="right">4.800</td>
+<td align="right">0.076</td>
+<td align="right">0.378</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1:id2</td>
+<td align="right">0.097</td>
+<td align="right">0.496</td>
+<td align="right">0.637</td>
+<td align="right">0.456</td>
+<td align="right">2.116</td>
+<td align="right">0.182</td>
+<td align="right">0.621</td>
+<td align="right">0.130</td>
+<td align="right">0.203</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 mean v3 by id3</td>
+<td align="right">0.138</td>
+<td align="right">0.719</td>
+<td align="right">0.501</td>
+<td align="right">1.250</td>
+<td align="right">1.707</td>
+<td align="right">1.465</td>
+<td align="right">1.147</td>
+<td align="right">0.183</td>
+<td align="right">1.722</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">mean v1:v3 by id4</td>
+<td align="right">0.188</td>
+<td align="right">0.569</td>
+<td align="right">0.525</td>
+<td align="right">0.298</td>
+<td align="right">0.866</td>
+<td align="right">0.272</td>
+<td align="right">0.713</td>
+<td align="right">0.039</td>
+<td align="right">0.061</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1:v3 by id6</td>
+<td align="right">0.154</td>
+<td align="right">1.402</td>
+<td align="right">0.888</td>
+<td align="right">0.357</td>
+<td align="right">1.539</td>
+<td align="right">0.334</td>
+<td align="right">1.174</td>
+<td align="right">0.137</td>
+<td align="right">0.090</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">median v3 sd v3 by id2 id4</td>
+<td align="right">0.926</td>
+<td align="right">1.566</td>
+<td align="right">1.316</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">2.746</td>
+<td align="right">0.240</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">max v1 - min v2 by id2 id4</td>
+<td align="right">0.339</td>
+<td align="right">0.881</td>
+<td align="right">0.814</td>
+<td align="right">0.195</td>
+<td align="right">0.924</td>
+<td align="right">0.255</td>
+<td align="right">1.993</td>
+<td align="right">0.122</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">largest two v3 by id2 id4</td>
+<td align="right">0.663</td>
+<td align="right">5.758</td>
+<td align="right">3.725</td>
+<td align="right">1.318</td>
+<td align="right">2.600</td>
+<td align="right">66.587</td>
+<td align="right">1.969</td>
+<td align="right">1.032</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">regression v1 v2 by id2 id4</td>
+<td align="right">0.761</td>
+<td align="right">1.218</td>
+<td align="right">12.005</td>
+<td align="right">NA</td>
+<td align="right">1.345</td>
+<td align="right">NA</td>
+<td align="right">2.062</td>
+<td align="right">0.160</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v3 count by id1:id6</td>
+<td align="right">1.849</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">11.708</td>
+<td align="right">5.186</td>
+<td align="right">15.353</td>
+<td align="right">3.544</td>
+<td align="right">1.658</td>
+<td align="right">5.206</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1</td>
+<td align="right">0.148</td>
+<td align="right">0.118</td>
+<td align="right">0.271</td>
+<td align="right">0.150</td>
+<td align="right">1.258</td>
+<td align="right">0.080</td>
+<td align="right">4.788</td>
+<td align="right">0.049</td>
+<td align="right">0.318</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1:id2</td>
+<td align="right">0.158</td>
+<td align="right">0.230</td>
+<td align="right">0.560</td>
+<td align="right">0.239</td>
+<td align="right">2.313</td>
+<td align="right">0.148</td>
+<td align="right">0.339</td>
+<td align="right">0.158</td>
+<td align="right">0.151</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 mean v3 by id3</td>
+<td align="right">0.231</td>
+<td align="right">2.731</td>
+<td align="right">0.846</td>
+<td align="right">3.707</td>
+<td align="right">2.627</td>
+<td align="right">11.165</td>
+<td align="right">1.914</td>
+<td align="right">0.390</td>
+<td align="right">2.251</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">mean v1:v3 by id4</td>
+<td align="right">0.248</td>
+<td align="right">0.472</td>
+<td align="right">0.548</td>
+<td align="right">0.266</td>
+<td align="right">1.020</td>
+<td align="right">0.216</td>
+<td align="right">0.704</td>
+<td align="right">0.042</td>
+<td align="right">0.064</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1:v3 by id6</td>
+<td align="right">0.213</td>
+<td align="right">6.575</td>
+<td align="right">1.599</td>
+<td align="right">0.495</td>
+<td align="right">2.043</td>
+<td align="right">1.535</td>
+<td align="right">2.135</td>
+<td align="right">0.265</td>
+<td align="right">0.116</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">median v3 sd v3 by id2 id4</td>
+<td align="right">0.837</td>
+<td align="right">0.735</td>
+<td align="right">0.953</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">2.310</td>
+<td align="right">0.113</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">max v1 - min v2 by id2 id4</td>
+<td align="right">0.338</td>
+<td align="right">0.420</td>
+<td align="right">0.743</td>
+<td align="right">0.155</td>
+<td align="right">0.639</td>
+<td align="right">0.164</td>
+<td align="right">1.535</td>
+<td align="right">0.150</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">largest two v3 by id2 id4</td>
+<td align="right">0.567</td>
+<td align="right">5.289</td>
+<td align="right">3.375</td>
+<td align="right">2.004</td>
+<td align="right">2.833</td>
+<td align="right">3.600</td>
+<td align="right">1.516</td>
+<td align="right">1.088</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">regression v1 v2 by id2 id4</td>
+<td align="right">0.535</td>
+<td align="right">0.529</td>
+<td align="right">2.566</td>
+<td align="right">NA</td>
+<td align="right">0.737</td>
+<td align="right">NA</td>
+<td align="right">1.589</td>
+<td align="right">0.074</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v3 count by id1:id6</td>
+<td align="right">2.118</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">7.689</td>
+<td align="right">5.012</td>
+<td align="right">26.280</td>
+<td align="right">4.134</td>
+<td align="right">1.729</td>
+<td align="right">5.654</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1</td>
+<td align="right">0.161</td>
+<td align="right">0.135</td>
+<td align="right">0.200</td>
+<td align="right">0.240</td>
+<td align="right">1.364</td>
+<td align="right">0.073</td>
+<td align="right">4.995</td>
+<td align="right">0.051</td>
+<td align="right">0.298</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1:id2</td>
+<td align="right">0.159</td>
+<td align="right">0.191</td>
+<td align="right">0.555</td>
+<td align="right">0.228</td>
+<td align="right">0.847</td>
+<td align="right">0.134</td>
+<td align="right">0.320</td>
+<td align="right">0.174</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 mean v3 by id3</td>
+<td align="right">0.534</td>
+<td align="right">6.870</td>
+<td align="right">2.128</td>
+<td align="right">6.054</td>
+<td align="right">4.834</td>
+<td align="right">24.417</td>
+<td align="right">4.044</td>
+<td align="right">0.734</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">mean v1:v3 by id4</td>
+<td align="right">0.273</td>
+<td align="right">0.306</td>
+<td align="right">0.553</td>
+<td align="right">0.224</td>
+<td align="right">0.826</td>
+<td align="right">0.221</td>
+<td align="right">0.736</td>
+<td align="right">0.044</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1:v3 by id6</td>
+<td align="right">1.102</td>
+<td align="right">17.138</td>
+<td align="right">4.679</td>
+<td align="right">1.620</td>
+<td align="right">2.365</td>
+<td align="right">4.060</td>
+<td align="right">3.486</td>
+<td align="right">0.550</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">median v3 sd v3 by id2 id4</td>
+<td align="right">0.554</td>
+<td align="right">0.652</td>
+<td align="right">0.911</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">2.504</td>
+<td align="right">0.316</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">max v1 - min v2 by id2 id4</td>
+<td align="right">0.185</td>
+<td align="right">0.290</td>
+<td align="right">0.683</td>
+<td align="right">0.184</td>
+<td align="right">0.574</td>
+<td align="right">0.181</td>
+<td align="right">1.530</td>
+<td align="right">0.121</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">largest two v3 by id2 id4</td>
+<td align="right">0.491</td>
+<td align="right">5.275</td>
+<td align="right">3.241</td>
+<td align="right">0.574</td>
+<td align="right">4.361</td>
+<td align="right">3.273</td>
+<td align="right">1.756</td>
+<td align="right">1.887</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">regression v1 v2 by id2 id4</td>
+<td align="right">0.349</td>
+<td align="right">0.388</td>
+<td align="right">2.008</td>
+<td align="right">NA</td>
+<td align="right">0.738</td>
+<td align="right">NA</td>
+<td align="right">1.496</td>
+<td align="right">0.174</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v3 count by id1:id6</td>
+<td align="right">4.149</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">8.428</td>
+<td align="right">5.102</td>
+<td align="right">43.991</td>
+<td align="right">6.206</td>
+<td align="right">1.670</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">sum v1 by id1</td>
+<td align="right">0.059</td>
+<td align="right">0.081</td>
+<td align="right">0.206</td>
+<td align="right">0.130</td>
+<td align="right">1.347</td>
+<td align="right">0.085</td>
+<td align="right">4.782</td>
+<td align="right">0.035</td>
+<td align="right">0.293</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">sum v1 by id1:id2</td>
+<td align="right">0.042</td>
+<td align="right">0.149</td>
+<td align="right">0.576</td>
+<td align="right">0.382</td>
+<td align="right">2.521</td>
+<td align="right">0.152</td>
+<td align="right">0.354</td>
+<td align="right">0.088</td>
+<td align="right">0.120</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">sum v1 mean v3 by id3</td>
+<td align="right">0.173</td>
+<td align="right">0.699</td>
+<td align="right">0.408</td>
+<td align="right">0.907</td>
+<td align="right">2.318</td>
+<td align="right">1.578</td>
+<td align="right">1.143</td>
+<td align="right">0.197</td>
+<td align="right">0.747</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">mean v1:v3 by id4</td>
+<td align="right">0.192</td>
+<td align="right">0.586</td>
+<td align="right">0.572</td>
+<td align="right">0.256</td>
+<td align="right">0.823</td>
+<td align="right">0.214</td>
+<td align="right">0.723</td>
+<td align="right">0.042</td>
+<td align="right">0.060</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">sum v1:v3 by id6</td>
+<td align="right">0.163</td>
+<td align="right">1.422</td>
+<td align="right">0.943</td>
+<td align="right">0.262</td>
+<td align="right">1.382</td>
+<td align="right">0.400</td>
+<td align="right">1.185</td>
+<td align="right">0.143</td>
+<td align="right">0.091</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">median v3 sd v3 by id2 id4</td>
+<td align="right">0.551</td>
+<td align="right">1.082</td>
+<td align="right">1.028</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">2.327</td>
+<td align="right">0.110</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">max v1 - min v2 by id2 id4</td>
+<td align="right">0.187</td>
+<td align="right">0.397</td>
+<td align="right">0.758</td>
+<td align="right">0.182</td>
+<td align="right">1.218</td>
+<td align="right">0.228</td>
+<td align="right">1.528</td>
+<td align="right">0.084</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">largest two v3 by id2 id4</td>
+<td align="right">0.574</td>
+<td align="right">5.572</td>
+<td align="right">3.856</td>
+<td align="right">1.549</td>
+<td align="right">3.057</td>
+<td align="right">66.055</td>
+<td align="right">1.541</td>
+<td align="right">0.891</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">regression v1 v2 by id2 id4</td>
+<td align="right">0.498</td>
+<td align="right">0.756</td>
+<td align="right">12.105</td>
+<td align="right">NA</td>
+<td align="right">1.337</td>
+<td align="right">NA</td>
+<td align="right">1.455</td>
+<td align="right">0.093</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e7</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">sum v3 count by id1:id6</td>
+<td align="right">0.935</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">8.363</td>
+<td align="right">5.733</td>
+<td align="right">14.626</td>
+<td align="right">3.347</td>
+<td align="right">1.720</td>
+<td align="right">5.249</td>
+</tr>
+<tr class="odd">
+<td align="left">1e7</td>
+<td align="right">NA</td>
+<td align="left">NA</td>
+<td align="left">NA</td>
+<td align="left">NA</td>
+<td align="right">21.941</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">87.191</td>
+<td align="right">16.959</td>
+<td align="right">NA</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="gb-1" class="section level3">
+<h3>5 GB</h3>
+<div id="set-of-basic-questions-1" class="section level4">
+<h4>Set of basic questions</h4>
+<div class="figure">
+<img src="groupby/plots/G1_1e8_1e2_0_0.basic.png" />
+
+</div>
+</div>
+<div id="set-of-advanced-questions-1" class="section level4">
+<h4>Set of advanced questions</h4>
+<div class="figure">
+<img src="groupby/plots/G1_1e8_1e2_0_0.advanced.png" />
+
+</div>
+</div>
+<div id="details-table-1" class="section level4">
+<h4>Details table</h4>
+<p>Plots of all cases can be found at <a href="groupby/plots/G1_1e8_1e2_0_0.basic.png">G1_1e8_1e2_0_0.basic.png</a>, <a href="groupby/plots/G1_1e8_1e1_0_0.basic.png">G1_1e8_1e1_0_0.basic.png</a>, <a href="groupby/plots/G1_1e8_2e0_0_0.basic.png">G1_1e8_2e0_0_0.basic.png</a>, <a href="groupby/plots/G1_1e8_1e2_0_1.basic.png">G1_1e8_1e2_0_1.basic.png</a>, <a href="groupby/plots/G1_1e8_1e2_0_0.advanced.png">G1_1e8_1e2_0_0.advanced.png</a>, <a href="groupby/plots/G1_1e8_1e1_0_0.advanced.png">G1_1e8_1e1_0_0.advanced.png</a>, <a href="groupby/plots/G1_1e8_2e0_0_0.advanced.png">G1_1e8_2e0_0_0.advanced.png</a>, <a href="groupby/plots/G1_1e8_1e2_0_1.advanced.png">G1_1e8_1e2_0_1.advanced.png</a>. Below first run timings.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">rows</th>
+<th align="right">q1_grp.size</th>
+<th align="left">NA_pct</th>
+<th align="left">pre_sorted</th>
+<th align="left">question</th>
+<th align="right">data.table</th>
+<th align="right">dplyr</th>
+<th align="right">pandas</th>
+<th align="right">pydatatable</th>
+<th align="right">spark</th>
+<th align="right">dask</th>
+<th align="right">juliadf</th>
+<th align="right">clickhouse</th>
+<th align="right">cudf</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1</td>
+<td align="right">0.881</td>
+<td align="right">2.079</td>
+<td align="right">1.995</td>
+<td align="right">2.106</td>
+<td align="right">6.645</td>
+<td align="right">0.716</td>
+<td align="right">6.420</td>
+<td align="right">0.343</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1:id2</td>
+<td align="right">0.978</td>
+<td align="right">6.066</td>
+<td align="right">6.647</td>
+<td align="right">4.392</td>
+<td align="right">3.827</td>
+<td align="right">1.512</td>
+<td align="right">4.806</td>
+<td align="right">0.810</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 mean v3 by id3</td>
+<td align="right">1.346</td>
+<td align="right">16.505</td>
+<td align="right">7.637</td>
+<td align="right">10.615</td>
+<td align="right">6.280</td>
+<td align="right">143.416</td>
+<td align="right">15.102</td>
+<td align="right">23.358</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">mean v1:v3 by id4</td>
+<td align="right">1.507</td>
+<td align="right">8.109</td>
+<td align="right">5.786</td>
+<td align="right">2.074</td>
+<td align="right">1.298</td>
+<td align="right">1.715</td>
+<td align="right">4.081</td>
+<td align="right">0.250</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1:v3 by id6</td>
+<td align="right">1.303</td>
+<td align="right">38.186</td>
+<td align="right">14.172</td>
+<td align="right">3.415</td>
+<td align="right">5.656</td>
+<td align="right">7.702</td>
+<td align="right">19.472</td>
+<td align="right">1.598</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">median v3 sd v3 by id2 id4</td>
+<td align="right">9.687</td>
+<td align="right">14.481</td>
+<td align="right">14.044</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">18.015</td>
+<td align="right">1.632</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">max v1 - min v2 by id2 id4</td>
+<td align="right">4.012</td>
+<td align="right">9.081</td>
+<td align="right">8.809</td>
+<td align="right">1.630</td>
+<td align="right">2.260</td>
+<td align="right">1.559</td>
+<td align="right">14.653</td>
+<td align="right">0.783</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">largest two v3 by id2 id4</td>
+<td align="right">6.111</td>
+<td align="right">73.686</td>
+<td align="right">44.726</td>
+<td align="right">69.314</td>
+<td align="right">11.920</td>
+<td align="right">138.065</td>
+<td align="right">15.232</td>
+<td align="right">10.099</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">regression v1 v2 by id2 id4</td>
+<td align="right">5.486</td>
+<td align="right">10.416</td>
+<td align="right">44.874</td>
+<td align="right">NA</td>
+<td align="right">2.936</td>
+<td align="right">NA</td>
+<td align="right">16.334</td>
+<td align="right">0.917</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v3 count by id1:id6</td>
+<td align="right">16.979</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">84.524</td>
+<td align="right">40.787</td>
+<td align="right">493.674</td>
+<td align="right">34.606</td>
+<td align="right">19.165</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1</td>
+<td align="right">1.192</td>
+<td align="right">1.452</td>
+<td align="right">1.989</td>
+<td align="right">1.385</td>
+<td align="right">2.874</td>
+<td align="right">0.640</td>
+<td align="right">6.759</td>
+<td align="right">0.366</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1:id2</td>
+<td align="right">1.302</td>
+<td align="right">2.648</td>
+<td align="right">5.300</td>
+<td align="right">2.202</td>
+<td align="right">2.859</td>
+<td align="right">1.164</td>
+<td align="right">2.033</td>
+<td align="right">1.330</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 mean v3 by id3</td>
+<td align="right">2.248</td>
+<td align="right">35.480</td>
+<td align="right">15.075</td>
+<td align="right">27.827</td>
+<td align="right">11.953</td>
+<td align="right">460.599</td>
+<td align="right">33.976</td>
+<td align="right">4.822</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">mean v1:v3 by id4</td>
+<td align="right">2.010</td>
+<td align="right">4.503</td>
+<td align="right">5.936</td>
+<td align="right">0.967</td>
+<td align="right">1.222</td>
+<td align="right">1.865</td>
+<td align="right">3.724</td>
+<td align="right">2.190</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1:v3 by id6</td>
+<td align="right">2.285</td>
+<td align="right">87.280</td>
+<td align="right">29.795</td>
+<td align="right">4.731</td>
+<td align="right">8.314</td>
+<td align="right">30.423</td>
+<td align="right">30.698</td>
+<td align="right">3.202</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">median v3 sd v3 by id2 id4</td>
+<td align="right">8.484</td>
+<td align="right">9.139</td>
+<td align="right">9.510</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">12.484</td>
+<td align="right">1.194</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">max v1 - min v2 by id2 id4</td>
+<td align="right">3.436</td>
+<td align="right">4.457</td>
+<td align="right">7.095</td>
+<td align="right">1.305</td>
+<td align="right">1.552</td>
+<td align="right">1.163</td>
+<td align="right">9.390</td>
+<td align="right">1.353</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">largest two v3 by id2 id4</td>
+<td align="right">5.710</td>
+<td align="right">68.983</td>
+<td align="right">40.090</td>
+<td align="right">7.093</td>
+<td align="right">12.726</td>
+<td align="right">55.708</td>
+<td align="right">9.342</td>
+<td align="right">12.725</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">regression v1 v2 by id2 id4</td>
+<td align="right">5.112</td>
+<td align="right">5.658</td>
+<td align="right">28.342</td>
+<td align="right">NA</td>
+<td align="right">2.040</td>
+<td align="right">NA</td>
+<td align="right">10.991</td>
+<td align="right">0.492</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v3 count by id1:id6</td>
+<td align="right">25.298</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">70.024</td>
+<td align="right">38.262</td>
+<td align="right">750.109</td>
+<td align="right">46.329</td>
+<td align="right">18.095</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1</td>
+<td align="right">1.409</td>
+<td align="right">1.257</td>
+<td align="right">1.999</td>
+<td align="right">1.624</td>
+<td align="right">2.881</td>
+<td align="right">0.641</td>
+<td align="right">9.821</td>
+<td align="right">0.309</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1:id2</td>
+<td align="right">1.442</td>
+<td align="right">1.976</td>
+<td align="right">5.279</td>
+<td align="right">2.334</td>
+<td align="right">1.779</td>
+<td align="right">1.147</td>
+<td align="right">1.997</td>
+<td align="right">1.235</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 mean v3 by id3</td>
+<td align="right">29.782</td>
+<td align="right">74.429</td>
+<td align="right">24.969</td>
+<td align="right">58.494</td>
+<td align="right">15.696</td>
+<td align="right">822.581</td>
+<td align="right">45.733</td>
+<td align="right">8.969</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">mean v1:v3 by id4</td>
+<td align="right">2.306</td>
+<td align="right">2.897</td>
+<td align="right">5.501</td>
+<td align="right">1.757</td>
+<td align="right">1.304</td>
+<td align="right">1.748</td>
+<td align="right">4.287</td>
+<td align="right">2.775</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1:v3 by id6</td>
+<td align="right">5.972</td>
+<td align="right">156.162</td>
+<td align="right">59.711</td>
+<td align="right">15.134</td>
+<td align="right">11.327</td>
+<td align="right">69.640</td>
+<td align="right">38.874</td>
+<td align="right">4.899</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">median v3 sd v3 by id2 id4</td>
+<td align="right">5.140</td>
+<td align="right">5.903</td>
+<td align="right">8.640</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">15.543</td>
+<td align="right">2.665</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">max v1 - min v2 by id2 id4</td>
+<td align="right">1.736</td>
+<td align="right">2.678</td>
+<td align="right">6.963</td>
+<td align="right">1.616</td>
+<td align="right">1.536</td>
+<td align="right">1.208</td>
+<td align="right">11.059</td>
+<td align="right">1.153</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">largest two v3 by id2 id4</td>
+<td align="right">6.233</td>
+<td align="right">66.616</td>
+<td align="right">37.532</td>
+<td align="right">2.297</td>
+<td align="right">33.392</td>
+<td align="right">33.724</td>
+<td align="right">13.872</td>
+<td align="right">26.693</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">regression v1 v2 by id2 id4</td>
+<td align="right">3.599</td>
+<td align="right">3.689</td>
+<td align="right">20.407</td>
+<td align="right">NA</td>
+<td align="right">2.280</td>
+<td align="right">NA</td>
+<td align="right">11.494</td>
+<td align="right">0.612</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v3 count by id1:id6</td>
+<td align="right">21.148</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">83.627</td>
+<td align="right">35.944</td>
+<td align="right">1350.797</td>
+<td align="right">65.239</td>
+<td align="right">15.733</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">sum v1 by id1</td>
+<td align="right">0.445</td>
+<td align="right">0.863</td>
+<td align="right">2.228</td>
+<td align="right">1.032</td>
+<td align="right">2.044</td>
+<td align="right">0.651</td>
+<td align="right">6.170</td>
+<td align="right">0.240</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">sum v1 by id1:id2</td>
+<td align="right">0.442</td>
+<td align="right">1.413</td>
+<td align="right">5.386</td>
+<td align="right">2.465</td>
+<td align="right">3.018</td>
+<td align="right">1.148</td>
+<td align="right">2.033</td>
+<td align="right">0.613</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">sum v1 mean v3 by id3</td>
+<td align="right">1.216</td>
+<td align="right">15.397</td>
+<td align="right">6.464</td>
+<td align="right">9.611</td>
+<td align="right">6.164</td>
+<td align="right">143.471</td>
+<td align="right">14.225</td>
+<td align="right">1.903</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">mean v1:v3 by id4</td>
+<td align="right">1.520</td>
+<td align="right">8.176</td>
+<td align="right">6.044</td>
+<td align="right">1.957</td>
+<td align="right">1.223</td>
+<td align="right">1.867</td>
+<td align="right">3.818</td>
+<td align="right">0.252</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">sum v1:v3 by id6</td>
+<td align="right">1.441</td>
+<td align="right">38.874</td>
+<td align="right">15.268</td>
+<td align="right">3.679</td>
+<td align="right">4.761</td>
+<td align="right">7.371</td>
+<td align="right">19.537</td>
+<td align="right">1.750</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">median v3 sd v3 by id2 id4</td>
+<td align="right">5.168</td>
+<td align="right">7.548</td>
+<td align="right">9.819</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">11.629</td>
+<td align="right">0.757</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">max v1 - min v2 by id2 id4</td>
+<td align="right">1.405</td>
+<td align="right">3.225</td>
+<td align="right">7.203</td>
+<td align="right">1.223</td>
+<td align="right">2.215</td>
+<td align="right">1.637</td>
+<td align="right">8.319</td>
+<td align="right">0.523</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">largest two v3 by id2 id4</td>
+<td align="right">4.447</td>
+<td align="right">68.834</td>
+<td align="right">44.275</td>
+<td align="right">79.036</td>
+<td align="right">10.873</td>
+<td align="right">120.588</td>
+<td align="right">8.648</td>
+<td align="right">9.018</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">regression v1 v2 by id2 id4</td>
+<td align="right">3.126</td>
+<td align="right">4.640</td>
+<td align="right">31.808</td>
+<td align="right">NA</td>
+<td align="right">2.585</td>
+<td align="right">NA</td>
+<td align="right">8.814</td>
+<td align="right">0.717</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e8</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">sum v3 count by id1:id6</td>
+<td align="right">7.740</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">64.434</td>
+<td align="right">39.428</td>
+<td align="right">477.021</td>
+<td align="right">32.898</td>
+<td align="right">18.576</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e8</td>
+<td align="right">NA</td>
+<td align="left">NA</td>
+<td align="left">NA</td>
+<td align="left">NA</td>
+<td align="right">211.084</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">648.457</td>
+<td align="right">204.116</td>
+<td align="right">NA</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="gb-2" class="section level3 active">
+<h3>50 GB</h3>
+<div id="set-of-basic-questions-2" class="section level4">
+<h4>Set of basic questions</h4>
+<div class="figure">
+<img src="groupby/plots/G1_1e9_1e2_0_0.basic.png" />
+
+</div>
+</div>
+<div id="set-of-advanced-questions-2" class="section level4">
+<h4>Set of advanced questions</h4>
+<div class="figure">
+<img src="groupby/plots/G1_1e9_1e2_0_0.advanced.png" />
+
+</div>
+</div>
+<div id="details-table-2" class="section level4">
+<h4>Details table</h4>
+<p>Plots of all cases can be found at <a href="groupby/plots/G1_1e9_1e2_0_0.basic.png">G1_1e9_1e2_0_0.basic.png</a>, <a href="groupby/plots/G1_1e9_1e1_0_0.basic.png">G1_1e9_1e1_0_0.basic.png</a>, <a href="groupby/plots/G1_1e9_2e0_0_0.basic.png">G1_1e9_2e0_0_0.basic.png</a>, <a href="groupby/plots/G1_1e9_1e2_0_1.basic.png">G1_1e9_1e2_0_1.basic.png</a>, <a href="groupby/plots/G1_1e9_1e2_0_0.advanced.png">G1_1e9_1e2_0_0.advanced.png</a>, <a href="groupby/plots/G1_1e9_1e1_0_0.advanced.png">G1_1e9_1e1_0_0.advanced.png</a>, <a href="groupby/plots/G1_1e9_2e0_0_0.advanced.png">G1_1e9_2e0_0_0.advanced.png</a>, <a href="groupby/plots/G1_1e9_1e2_0_1.advanced.png">G1_1e9_1e2_0_1.advanced.png</a>. Below first run timings.</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">rows</th>
+<th align="right">q1_grp.size</th>
+<th align="left">NA_pct</th>
+<th align="left">pre_sorted</th>
+<th align="left">question</th>
+<th align="right">data.table</th>
+<th align="right">dplyr</th>
+<th align="right">pandas</th>
+<th align="right">pydatatable</th>
+<th align="right">spark</th>
+<th align="right">dask</th>
+<th align="right">juliadf</th>
+<th align="right">clickhouse</th>
+<th align="right">cudf</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1</td>
+<td align="right">9.265</td>
+<td align="right">23.440</td>
+<td align="right">NA</td>
+<td align="right">25.895</td>
+<td align="right">12.445</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">84.182</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1:id2</td>
+<td align="right">11.069</td>
+<td align="right">62.772</td>
+<td align="right">NA</td>
+<td align="right">47.094</td>
+<td align="right">24.133</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">33.629</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 mean v3 by id3</td>
+<td align="right">13.210</td>
+<td align="right">238.025</td>
+<td align="right">NA</td>
+<td align="right">136.766</td>
+<td align="right">83.709</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">102.252</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">mean v1:v3 by id4</td>
+<td align="right">16.552</td>
+<td align="right">88.647</td>
+<td align="right">NA</td>
+<td align="right">20.176</td>
+<td align="right">8.170</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">40.064</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1:v3 by id6</td>
+<td align="right">14.451</td>
+<td align="right">523.907</td>
+<td align="right">NA</td>
+<td align="right">24.564</td>
+<td align="right">60.479</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">42.913</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">median v3 sd v3 by id2 id4</td>
+<td align="right">110.809</td>
+<td align="right">172.120</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">20.194</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">max v1 - min v2 by id2 id4</td>
+<td align="right">53.877</td>
+<td align="right">123.183</td>
+<td align="right">NA</td>
+<td align="right">16.195</td>
+<td align="right">17.471</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">7.612</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">largest two v3 by id2 id4</td>
+<td align="right">74.079</td>
+<td align="right">943.661</td>
+<td align="right">NA</td>
+<td align="right">199.193</td>
+<td align="right">137.292</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">187.408</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">regression v1 v2 by id2 id4</td>
+<td align="right">72.179</td>
+<td align="right">141.615</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">22.949</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">90.058</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v3 count by id1:id6</td>
+<td align="right">179.508</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">751.113</td>
+<td align="right">750.028</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1</td>
+<td align="right">12.007</td>
+<td align="right">17.358</td>
+<td align="right">NA</td>
+<td align="right">11.280</td>
+<td align="right">11.843</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">2.998</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1:id2</td>
+<td align="right">11.641</td>
+<td align="right">32.276</td>
+<td align="right">NA</td>
+<td align="right">24.912</td>
+<td align="right">17.130</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">12.302</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 mean v3 by id3</td>
+<td align="right">30.115</td>
+<td align="right">483.684</td>
+<td align="right">NA</td>
+<td align="right">330.346</td>
+<td align="right">127.824</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">109.570</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">mean v1:v3 by id4</td>
+<td align="right">20.291</td>
+<td align="right">51.517</td>
+<td align="right">NA</td>
+<td align="right">11.184</td>
+<td align="right">7.899</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">46.934</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1:v3 by id6</td>
+<td align="right">28.851</td>
+<td align="right">1285.866</td>
+<td align="right">NA</td>
+<td align="right">169.934</td>
+<td align="right">82.998</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">54.523</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">median v3 sd v3 by id2 id4</td>
+<td align="right">90.897</td>
+<td align="right">104.916</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">20.956</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">max v1 - min v2 by id2 id4</td>
+<td align="right">36.145</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">13.878</td>
+<td align="right">11.580</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">16.459</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">largest two v3 by id2 id4</td>
+<td align="right">80.370</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">30.820</td>
+<td align="right">143.484</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">222.414</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">regression v1 v2 by id2 id4</td>
+<td align="right">48.163</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">13.608</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">32.588</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">10</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v3 count by id1:id6</td>
+<td align="right">326.119</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">776.727</td>
+<td align="right">764.813</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1</td>
+<td align="right">12.666</td>
+<td align="right">12.265</td>
+<td align="right">NA</td>
+<td align="right">16.221</td>
+<td align="right">11.845</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">2.380</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 by id1:id2</td>
+<td align="right">16.579</td>
+<td align="right">20.064</td>
+<td align="right">NA</td>
+<td align="right">17.905</td>
+<td align="right">14.138</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">11.529</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1 mean v3 by id3</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">625.741</td>
+<td align="right">137.651</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">174.785</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">mean v1:v3 by id4</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">17.528</td>
+<td align="right">7.803</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v1:v3 by id6</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">133.190</td>
+<td align="right">113.318</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">median v3 sd v3 by id2 id4</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">max v1 - min v2 by id2 id4</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">18.848</td>
+<td align="right">11.176</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">largest two v3 by id2 id4</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">22.075</td>
+<td align="right">479.219</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">regression v1 v2 by id2 id4</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">16.534</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">2</td>
+<td align="left">0</td>
+<td align="left">unsorted</td>
+<td align="left">sum v3 count by id1:id6</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">903.631</td>
+<td align="right">593.575</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">sum v1 by id1</td>
+<td align="right">3.174</td>
+<td align="right">12.076</td>
+<td align="right">NA</td>
+<td align="right">9.656</td>
+<td align="right">10.655</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">1.692</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">sum v1 by id1:id2</td>
+<td align="right">3.498</td>
+<td align="right">16.723</td>
+<td align="right">NA</td>
+<td align="right">17.591</td>
+<td align="right">13.028</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">3.945</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">sum v1 mean v3 by id3</td>
+<td align="right">10.180</td>
+<td align="right">198.633</td>
+<td align="right">NA</td>
+<td align="right">87.068</td>
+<td align="right">91.454</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">23.992</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">mean v1:v3 by id4</td>
+<td align="right">15.528</td>
+<td align="right">86.734</td>
+<td align="right">NA</td>
+<td align="right">20.127</td>
+<td align="right">8.246</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">11.897</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">sum v1:v3 by id6</td>
+<td align="right">14.616</td>
+<td align="right">517.113</td>
+<td align="right">NA</td>
+<td align="right">24.481</td>
+<td align="right">62.228</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">22.901</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">median v3 sd v3 by id2 id4</td>
+<td align="right">76.728</td>
+<td align="right">86.172</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">8.162</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">max v1 - min v2 by id2 id4</td>
+<td align="right">26.763</td>
+<td align="right">49.990</td>
+<td align="right">NA</td>
+<td align="right">12.149</td>
+<td align="right">14.757</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">4.880</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">largest two v3 by id2 id4</td>
+<td align="right">54.200</td>
+<td align="right">862.278</td>
+<td align="right">NA</td>
+<td align="right">205.049</td>
+<td align="right">98.977</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">112.487</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">regression v1 v2 by id2 id4</td>
+<td align="right">45.462</td>
+<td align="right">60.758</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">18.350</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">27.457</td>
+<td align="right">NA</td>
+</tr>
+<tr class="even">
+<td align="left">1e9</td>
+<td align="right">100</td>
+<td align="left">0</td>
+<td align="left">sorted</td>
+<td align="left">sum v3 count by id1:id6</td>
+<td align="right">77.007</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">568.583</td>
+<td align="right">430.035</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+</tr>
+<tr class="odd">
+<td align="left">1e9</td>
+<td align="right">NA</td>
+<td align="left">NA</td>
+<td align="left">NA</td>
+<td align="left">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+<td align="right">NA</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div id="notes" class="section level2">
+<h2>Notes</h2>
+<ul>
+<li>ClickHouse queries were made against <code>mergetree</code> table engine, see <a href="https://github.com/h2oai/db-benchmark/issues/91">#91</a> for details.</li>
+</ul>
+</div>
+<div id="environment-configuration" class="section level2">
+<h2>Environment configuration</h2>
+<ul>
+<li>R 3.6.0</li>
+<li>python 3.6</li>
+<li>Julia 1.0.2</li>
+</ul>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Component</th>
+<th align="left">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">cpu_model</td>
+<td align="left">Intel(R) Xeon(R) CPU E5-2630 v4 @ 2.20GHz</td>
+</tr>
+<tr class="even">
+<td align="left">cpu_cores</td>
+<td align="left">40</td>
+</tr>
+<tr class="odd">
+<td align="left">memory_model</td>
+<td align="left">DIMM Synchronous 2133 MHz</td>
+</tr>
+<tr class="even">
+<td align="left">memory_gb</td>
+<td align="left">125.78</td>
+</tr>
+<tr class="odd">
+<td align="left">gpu_model</td>
+<td align="left">GeForce GTX 1080 Ti</td>
+</tr>
+<tr class="even">
+<td align="left">gpu_num</td>
+<td align="left">2</td>
+</tr>
+<tr class="odd">
+<td align="left">gpu_gb</td>
+<td align="left">21.83</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p>Groupby benchmark run took around 63.3 hours.</p>
+<p>Report was generated on: 2019-09-24 18:16:54 PDT.</p>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
